@@ -7,8 +7,6 @@
     <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <!-- Supabase Client JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #FF5A00;
@@ -423,6 +421,37 @@
             font-size: 14px;
         }
 
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-btn {
+            background: #f0f2f5;
+            border: 2px dashed var(--gray-border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .file-input-btn:hover {
+            border-color: var(--primary);
+            background: #fff8f5;
+        }
+
+        .file-preview {
+            width: 100%;
+            max-height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
         .submit-btn {
             background: var(--primary);
             color: white;
@@ -598,8 +627,16 @@
                 <input type="number" id="addPrice" placeholder="Прим. 150">
             </div>
             <div class="form-group">
-                <label>URL на Снимка</label>
-                <input type="text" id="addImg" placeholder="https://example.com/image.jpg">
+                <label>Снимка на обявата</label>
+                <div class="file-input-wrapper">
+                    <div class="file-input-btn" onclick="document.getElementById('addImgFile').click()">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 24px; color: var(--primary); margin-bottom: 5px;"></i>
+                        <p style="font-size: 14px; color: var(--text-dark);">Натиснете тук за избор на снимка</p>
+                        <span style="font-size: 12px; color: var(--text-muted);">(от Галерия или Файлове)</span>
+                    </div>
+                    <input type="file" id="addImgFile" accept="image/*" style="display: none;" onchange="previewSelectedImage(event)">
+                    <img id="imgPreview" class="file-preview" alt="Преглед на снимка">
+                </div>
             </div>
             <div class="form-group">
                 <label>Описание</label>
@@ -650,10 +687,10 @@
     </div>
 
     <script>
-        // Инициализиране на запазването в браузъра (localStorage)
         let listings = JSON.parse(localStorage.getItem('px_market_listings')) || [];
         let chats = JSON.parse(localStorage.getItem('px_market_chats')) || {};
         let currentActiveListing = null;
+        let uploadedImageBase64 = '';
 
         function saveToStorage() {
             localStorage.setItem('px_market_listings', JSON.stringify(listings));
@@ -715,10 +752,23 @@
             document.getElementById(id).style.display = 'none';
         }
 
+        function previewSelectedImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImageBase64 = e.target.result;
+                    const preview = document.getElementById('imgPreview');
+                    preview.src = uploadedImageBase64;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
         function publishListing() {
             const title = document.getElementById('addTitle').value;
             const price = document.getElementById('addPrice').value;
-            const img = document.getElementById('addImg').value;
             const desc = document.getElementById('addDesc').value;
 
             if (!title || !price) {
@@ -730,16 +780,19 @@
                 id: Date.now(),
                 title,
                 price,
-                img,
+                img: uploadedImageBase64,
                 desc
             });
 
             saveToStorage();
 
+            // Изчистване на формата
             document.getElementById('addTitle').value = '';
             document.getElementById('addPrice').value = '';
-            document.getElementById('addImg').value = '';
             document.getElementById('addDesc').value = '';
+            document.getElementById('addImgFile').value = '';
+            document.getElementById('imgPreview').style.display = 'none';
+            uploadedImageBase64 = '';
 
             closeModal('addModal');
             renderListings();

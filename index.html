@@ -7,6 +7,8 @@
     <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Supabase Client JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #FF5A00;
@@ -235,6 +237,7 @@
             transition: transform 0.2s, box-shadow 0.2s;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         .product-card:hover {
@@ -269,6 +272,29 @@
             font-weight: 700;
             color: var(--primary);
             margin-top: auto;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            transition: 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #dc3545;
+            transform: scale(1.1);
         }
 
         /* Bottom Nav Bar (TikTok Style) */
@@ -533,13 +559,11 @@
 
     <!-- Main Content -->
     <div class="container">
-        <!-- Listings Container -->
         <div id="productGrid" class="product-grid"></div>
         
-        <!-- Empty State Message -->
         <div id="emptyState" class="empty-state">
             <i class="fa-solid fa-store-slash"></i>
-            <h3>Все още няма каченa обява</h3>
+            <h3>Все още няма качена обява</h3>
             <p>Бъдете първият, който ще публикува обява с натискане на оранжевия бутон "+".</p>
         </div>
     </div>
@@ -626,9 +650,15 @@
     </div>
 
     <script>
-        let listings = [];
-        let chats = {};
+        // Инициализиране на запазването в браузъра (localStorage)
+        let listings = JSON.parse(localStorage.getItem('px_market_listings')) || [];
+        let chats = JSON.parse(localStorage.getItem('px_market_chats')) || {};
         let currentActiveListing = null;
+
+        function saveToStorage() {
+            localStorage.setItem('px_market_listings', JSON.stringify(listings));
+            localStorage.setItem('px_market_chats', JSON.stringify(chats));
+        }
 
         function checkPassword() {
             const pwd = document.getElementById('pwdInput').value;
@@ -656,14 +686,22 @@
                 listings.forEach((item, index) => {
                     const card = document.createElement('div');
                     card.className = 'product-card';
-                    card.onclick = () => openDetailModal(index);
+                    
                     card.innerHTML = `
+                        <button class="delete-btn" onclick="deleteListing(event, ${index})" title="Изтрий обявата">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                         <img src="${item.img || 'https://via.placeholder.com/300x200?text=Няма+снимка'}" class="product-img">
                         <div class="product-info">
                             <div class="product-title">${item.title}</div>
                             <div class="product-price">${item.price} лв.</div>
                         </div>
                     `;
+                    card.onclick = (e) => {
+                        if (!e.target.closest('.delete-btn')) {
+                            openDetailModal(index);
+                        }
+                    };
                     grid.appendChild(card);
                 });
             }
@@ -696,6 +734,8 @@
                 desc
             });
 
+            saveToStorage();
+
             document.getElementById('addTitle').value = '';
             document.getElementById('addPrice').value = '';
             document.getElementById('addImg').value = '';
@@ -703,6 +743,15 @@
 
             closeModal('addModal');
             renderListings();
+        }
+
+        function deleteListing(event, index) {
+            event.stopPropagation();
+            if (confirm('Сигурни ли сте, че искате да изтриете тази обява?')) {
+                listings.splice(index, 1);
+                saveToStorage();
+                renderListings();
+            }
         }
 
         function openDetailModal(index) {
@@ -734,13 +783,14 @@
 
             const title = currentActiveListing.title;
             chats[title].push({ text: msg, type: 'sent' });
+            saveToStorage();
             input.value = '';
             
             renderMessages(title);
 
-            // Имитация на автоматичен отговор след 1 сек.
             setTimeout(() => {
                 chats[title].push({ text: 'Здравейте! Обявата е налична.', type: 'received' });
+                saveToStorage();
                 renderMessages(title);
             }, 1000);
         }
